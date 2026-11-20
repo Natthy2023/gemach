@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0f172a">
+  <title>Gemach — Number Guessing Game</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      padding: 20px;
+      display: grid;
+      place-items: center;
+      overflow-x: hidden;
+      color: #f8fafc;
+      background: #0f172a;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    #background {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+    }
+    .game-container {
+      width: min(100%, 460px);
+      padding: 34px 26px;
+      text-align: center;
+      border: 1px solid rgba(148, 163, 184, .2);
+      border-radius: 25px;
+      background: rgba(30, 41, 59, .94);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, .42);
+      backdrop-filter: blur(14px);
+    }
+    .game-icon { font-size: 48px; margin-bottom: 10px; }
+    h1 { font-size: clamp(30px, 8vw, 38px); letter-spacing: -.8px; }
+    .tagline { color: #38bdf8; font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; margin: 5px 0 14px; }
+    .description {
+      max-width: 350px;
+      margin: 0 auto 23px;
+      color: #cbd5e1;
+      font-size: 14px;
+      line-height: 1.65;
+    }
+    .range {
+      padding: 14px;
+      margin-bottom: 18px;
+      border-radius: 13px;
+      background: #0f172a;
+      color: #cbd5e1;
+      font-size: 14px;
+    }
+    .range strong { display: block; margin-top: 4px; color: #38bdf8; font-size: 25px; }
+    input {
+      width: 100%;
+      padding: 15px;
+      margin-bottom: 12px;
+      border: 2px solid #334155;
+      border-radius: 12px;
+      outline: none;
+      background: #0f172a;
+      color: white;
+      font: inherit;
+      font-size: 21px;
+      text-align: center;
+      transition: border-color .2s;
+    }
+    input:focus { border-color: #38bdf8; }
+    input:disabled { opacity: .65; }
+    button {
+      width: 100%;
+      padding: 14px 16px;
+      border: 0;
+      border-radius: 12px;
+      color: white;
+      background: #0284c7;
+      font: inherit;
+      font-weight: 750;
+      cursor: pointer;
+      transition: transform .2s, background .2s;
+    }
+    button:hover:not(:disabled) { transform: translateY(-2px); background: #0369a1; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .restart { margin-top: 11px; background: #334155; }
+    .restart:hover { background: #475569 !important; }
+    .message {
+      min-height: 56px;
+      display: grid;
+      place-items: center;
+      margin: 19px 0;
+      padding: 13px;
+      border-radius: 12px;
+      background: #0f172a;
+      color: #e2e8f0;
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.5;
+    }
+    .low { color: #38bdf8; }
+    .high { color: #fbbf24; }
+    .correct { color: #4ade80; }
+    .error { color: #fb7185; }
+    .stats { display: flex; gap: 12px; margin: 18px 0; }
+    .stat { flex: 1; padding: 13px 8px; border-radius: 12px; background: #0f172a; }
+    .stat h2 { color: #38bdf8; font-size: 25px; }
+    .stat p { margin-top: 4px; color: #94a3b8; font-size: 12px; }
+    .progress-label { display: flex; justify-content: space-between; color: #94a3b8; font-size: 12px; }
+    .progress-container { height: 7px; overflow: hidden; margin-top: 8px; border-radius: 20px; background: #0f172a; }
+    .progress { width: 0%; height: 100%; border-radius: inherit; background: #38bdf8; transition: width .3s; }
+    .history { margin-top: 20px; text-align: left; }
+    .history h3 { margin-bottom: 10px; font-size: 14px; }
+    #guesses { min-height: 28px; display: flex; flex-wrap: wrap; gap: 8px; }
+    .guess-item { padding: 7px 11px; border-radius: 8px; background: #334155; color: #e2e8f0; font-size: 13px; }
+    .empty-history { color: #64748b; font-size: 13px; }
+    footer { margin-top: 22px; color: #64748b; font-size: 11px; }
+    @media (max-width: 420px) { .game-container { padding: 28px 18px; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }
+  </style>
+</head>
+<body>
+  <canvas id="background" aria-hidden="true"></canvas>
+
+  <main class="game-container">
+    <div class="game-icon" aria-hidden="true">💎</div>
+    <h1>Gemach</h1>
+    <p class="tagline">The Number Guessing Game</p>
+    <p class="description">
+      Welcome to Gemach! A secret number from 1 to 100 has been chosen.
+      Use the higher and lower hints to figure it out. You have 10 attempts
+      to find the hidden number — how quickly can you guess it?
+    </p>
+
+    <div class="range">
+      Find the secret number between
+      <strong>1 – 100</strong>
+    </div>
+
+    <label for="guessInput" class="sr-only" style="position:absolute;left:-9999px">Your number guess</label>
+    <input id="guessInput" type="number" min="1" max="100" step="1"
+           placeholder="Enter your guess" inputmode="numeric" autocomplete="off">
+    <button id="guessBtn" type="button">Submit Guess</button>
+
+    <div class="message" id="message" role="status" aria-live="polite">
+      🚀 Make your first guess!
+    </div>
+
+    <div class="stats">
+      <div class="stat"><h2 id="attempts">0</h2><p>Attempts used</p></div>
+      <div class="stat"><h2 id="remaining">10</h2><p>Attempts left</p></div>
+    </div>
+
+    <div>
+      <div class="progress-label"><span>Game progress</span><span id="progressText">0 / 10</span></div>
+      <div class="progress-container"><div class="progress" id="progress"></div></div>
+    </div>
+
+    <section class="history" aria-label="Previous guesses">
+      <h3>📝 Previous Guesses</h3>
+      <div id="guesses"><span class="empty-history">No guesses yet...</span></div>
+    </section>
+
+    <button class="restart" id="restartBtn" type="button">↻ New Game</button>
+    <footer>Gemach · Made with HTML, CSS, JavaScript & Canvas</footer>
+  </main>
+
+  <script>
+    "use strict";
+
+    const MAX_ATTEMPTS = 10;
+    let secretNumber;
+    let attempts;
+    let gameOver;
+
+    const input = document.getElementById("guessInput");
+    const guessBtn = document.getElementById("guessBtn");
+    const message = document.getElementById("message");
+    const attemptsDisplay = document.getElementById("attempts");
+    const remainingDisplay = document.getElementById("remaining");
+    const guessesDisplay = document.getElementById("guesses");
+    const progress = document.getElementById("progress");
+    const progressText = document.getElementById("progressText");
+
+    function showMessage(text, type = "") {
+      message.textContent = text;
+      message.className = "message" + (type ? " " + type : "");
+    }
+
+    function endGame() {
+      gameOver = true;
+      input.disabled = true;
+      guessBtn.disabled = true;
+    }
+
+    function restartGame() {
+      secretNumber = Math.floor(Math.random() * 100) + 1;
+      attempts = 0;
+      gameOver = false;
+
+      input.value = "";
+      input.disabled = false;
+      guessBtn.disabled = false;
+      attemptsDisplay.textContent = "0";
+      remainingDisplay.textContent = String(MAX_ATTEMPTS);
+      progress.style.width = "0%";
+      progressText.textContent = `0 / ${MAX_ATTEMPTS}`;
+      guessesDisplay.innerHTML = '<span class="empty-history">No guesses yet...</span>';
+      showMessage("🚀 Make your first guess!");
+      input.focus();
+    }
+
+    function checkGuess() {
+      if (gameOver) return;
+
+      const rawGuess = input.value.trim();
+      const guess = Number(rawGuess);
+
+      if (rawGuess === "" || !Number.isInteger(guess) || guess < 1 || guess > 100) {
+        showMessage("⚠️ Please enter a whole number from 1 to 100.", "error");
+        input.focus();
+        return;
+      }
+
+      attempts += 1;
+      const remaining = MAX_ATTEMPTS - attempts;
+
+      attemptsDisplay.textContent = String(attempts);
+      remainingDisplay.textContent = String(remaining);
+      progress.style.width = `${(attempts / MAX_ATTEMPTS) * 100}%`;
+      progressText.textContent = `${attempts} / ${MAX_ATTEMPTS}`;
+
+      if (attempts === 1) guessesDisplay.innerHTML = "";
+      const guessChip = document.createElement("span");
+      guessChip.className = "guess-item";
+      guessChip.textContent = String(guess);
+      guessesDisplay.appendChild(guessChip);
+
+      if (guess === secretNumber) {
+        showMessage(`🎉 Correct! ${guess} is the secret number. You won in ${attempts} ${attempts === 1 ? "attempt" : "attempts"}!`, "correct");
+        endGame();
+      } else if (remaining === 0) {
+        showMessage(`Game over! The secret number was ${secretNumber}. Try a new game!`, "error");
+        endGame();
+      } else if (guess < secretNumber) {
+        showMessage("⬆️ Too LOW! Try a HIGHER number.", "low");
+      } else {
+        showMessage("⬇️ Too HIGH! Try a LOWER number.", "high");
+      }
+
+      input.value = "";
+      if (!gameOver) input.focus();
+    }
+
+    guessBtn.addEventListener("click", checkGuess);
+    document.getElementById("restartBtn").addEventListener("click", restartGame);
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") checkGuess();
+    });
+
+    // Animated HTML5 Canvas background
+    const canvas = document.getElementById("background");
+    const ctx = canvas.getContext("2d");
+    let particles = [];
+    let animationFrame;
+
+    function resizeCanvas() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.floor(window.innerWidth * dpr);
+      canvas.height = Math.floor(window.innerHeight * dpr);
+      canvas.style.width = `${window.innerWidth}px`;
+      canvas.style.height = `${window.innerHeight}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      createParticles();
+    }
+
+    function createParticles() {
+      const count = Math.min(65, Math.max(25, Math.floor(window.innerWidth / 18)));
+      particles = Array.from({ length: count }, () => ({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        radius: Math.random() * 2 + 1,
+        vx: (Math.random() - 0.5) * 0.45,
+        vy: (Math.random() - 0.5) * 0.45,
+        alpha: Math.random() * 0.35 + 0.15
+      }));
+    }
+
+    function animate() {
+      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+      for (const p of particles) {
+        p.x += p.vx;
+        p.y += p.vy;
+        if (p.x < 0 || p.x > window.innerWidth) p.vx *= -1;
+        if (p.y < 0 || p.y > window.innerHeight) p.vy *= -1;
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(56, 189, 248, ${p.alpha})`;
+        ctx.fill();
+      }
+      animationFrame = requestAnimationFrame(animate);
+    }
+
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+    animate();
+    restartGame();
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) cancelAnimationFrame(animationFrame);
+      else animate();
+    });
+  </script>
+</body>
+</html>
